@@ -36,12 +36,12 @@ Route::prefix('v1')->group(function (): void {
     });
 
     // Authenticated write endpoints — 20 req/min per IP
-    Route::middleware(['auth:sanctum', 'throttle:write'])->group(function (): void {
+//    Route::middleware(['auth:sanctum', 'throttle:write'])->group(function (): void {
         Route::post('/books', [BookController::class, 'store']);
         Route::put('/books/{book}', [BookController::class, 'update']);
         Route::patch('/books/{book}', [BookController::class, 'patch']);
         Route::delete('/books/{book}', [BookController::class, 'destroy']);
         Route::post('/books/{book}/borrow', [BookController::class, 'borrow']);
         Route::post('/books/{book}/return', [BookController::class, 'return']);
-    });
+//    });
 });
