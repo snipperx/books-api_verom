@@ -13,9 +13,6 @@ use Throwable;
 
 final class Handler extends ExceptionHandler
 {
-    /**
-     * @var list<class-string<Throwable>>
-     */
     protected $dontFlash = [
         'current_password',
         'password',
@@ -24,20 +21,28 @@ final class Handler extends ExceptionHandler
 
     public function register(): void
     {
-        $this->renderable(function (BookNotFoundException $e) {
-            return $this->domainErrorResponse($e->getMessage(), $e->getErrorCode(), $e->getStatusCode());
+        $this->renderable(function (ApiException $e): JsonResponse {
+            return $this->domainErrorResponse(
+                $e->getMessage(),
+                $e->getErrorCode(),
+                $e->getStatusCode()
+            );
         });
 
-        $this->renderable(function (BookNotAvailableException $e) {
-            return $this->domainErrorResponse($e->getMessage(), $e->getErrorCode(), $e->getStatusCode());
+        $this->renderable(function (NotFoundHttpException $e): JsonResponse {
+            return $this->domainErrorResponse(
+                'The requested resource was not found.',
+                'NOT_FOUND',
+                404
+            );
         });
 
-        $this->renderable(function (NotFoundHttpException $e) {
-            return $this->domainErrorResponse('The requested resource was not found.', 'NOT_FOUND', 404);
-        });
-
-        $this->renderable(function (AuthenticationException $e) {
-            return $this->domainErrorResponse('Unauthenticated. Please provide a valid Bearer token.', 'UNAUTHENTICATED', 401);
+        $this->renderable(function (AuthenticationException $e): JsonResponse {
+            return $this->domainErrorResponse(
+                'Unauthenticated. Please provide a valid Bearer token.',
+                'UNAUTHENTICATED',
+                401
+            );
         });
 
         $this->renderable(function (ValidationException $e): JsonResponse {

@@ -1,16 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable , SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +25,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'last_login_at'
     ];
 
     /**
@@ -40,6 +45,38 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'password' => 'hashed',
+        'last_login_at'     => 'datetime',
+        'password'          => 'hashed',
     ];
+
+    // ─── Domain Behaviour ─────────────────────────────────────────────────────
+
+    public function hasExceededTokenLimit(): bool
+    {
+        $limit = (int) config('sanctum.max_tokens_per_user', 10);
+
+        return $this->tokens()->count() >= $limit;
+    }
+
+    public function revokeAllTokens(): void
+    {
+        $this->tokens()->delete();
+    }
+
+    public function revokeCurrentToken(): void
+    {
+        $this->currentAccessToken()->delete();
+    }
+
+    public function updateLastLogin(): void
+    {
+        $this->forceFill(['last_login_at' => now()])->save();
+    }
+
+    // ─── Relationships ────────────────────────────────────────────────────────
+
+    public function borrowLogs(): HasMany
+    {
+        return $this->hasMany(BorrowLog::class);
+    }
 }

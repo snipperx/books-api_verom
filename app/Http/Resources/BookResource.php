@@ -18,6 +18,7 @@ final class BookResource extends JsonResource
     {
         return [
             'id'               => $this->id,
+            'ulid'               => $this->ulid,
             'title'            => $this->title,
             'author'           => $this->author,
             'isbn'             => $this->isbn,
