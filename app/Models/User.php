@@ -1,37 +1,39 @@
 <?php
 
+
 declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Permission;
+use App\Enums\Role;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Laravel\Sanctum\PersonalAccessToken;
 
-class User extends Authenticatable
+final class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable , SoftDeletes;
+    use HasApiTokens;
+    use HasFactory;
+    use Notifiable;
+    use SoftDeletes;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
+     * @var list<string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'last_login_at'
+        'role',
+        'last_login_at',
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
+     * @var list<string>
      */
     protected $hidden = [
         'password',
@@ -39,23 +41,79 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be cast.
-     *
      * @var array<string, string>
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
         'last_login_at'     => 'datetime',
         'password'          => 'hashed',
+        'role'              => Role::class,   // cast directly to enum
     ];
 
-    // ─── Domain Behaviour ─────────────────────────────────────────────────────
+    // ─── Role Checks ──────────────────────────────────────────────────────────
+
+    public function isAdmin(): bool
+    {
+        return $this->role === Role::Admin;
+    }
+
+    public function isLibrarian(): bool
+    {
+        return $this->role === Role::Librarian;
+    }
+
+    public function isMember(): bool
+    {
+        return $this->role === Role::Member;
+    }
+
+    public function hasRole(Role $role): bool
+    {
+        return $this->role === $role;
+    }
+
+    public function hasAnyRole(Role ...$roles): bool
+    {
+        return in_array($this->role, $roles, strict: true);
+    }
+
+    // ─── Permission Checks ────────────────────────────────────────────────────
+
+    /**
+     * Check if the user's role grants a specific permission.
+     *
+     * The role enum is the single source of truth —
+     * no database query is required.
+     */
+    public function hasPermission(Permission $permission): bool
+    {
+        return $this->role->hasPermission($permission);
+    }
+
+    public function hasAnyPermission(Permission ...$permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // ─── Role Management ──────────────────────────────────────────────────────
+
+    public function assignRole(Role $role): void
+    {
+        $this->forceFill(['role' => $role])->save();
+    }
+
+    // ─── Token Helpers ────────────────────────────────────────────────────────
 
     public function hasExceededTokenLimit(): bool
     {
-        $limit = (int) config('sanctum.max_tokens_per_user', 10);
-
-        return $this->tokens()->count() >= $limit;
+        return $this->tokens()->count()
+            >= (int) config('sanctum.max_tokens_per_user', 10);
     }
 
     public function revokeAllTokens(): void
